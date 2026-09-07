@@ -1,0 +1,137 @@
+#include <esp_now.h>
+#include <WiFi.h>
+
+typedef struct {
+  bool thumb;
+  bool index;
+  bool middle;
+  bool ring;
+  bool pinky;
+} HandData;
+
+HandData data;
+
+uint8_t receiverMac[] = {
+  0xE0, 0x8C, 0xFE, 0x58, 0xFF, 0xF4
+};
+
+int thumbMax;
+int indexMax;
+int middleMax;
+int ringMax;
+int pinkyMax;
+
+bool thumbState  = true;
+bool indexState  = true;
+bool middleState = true;
+bool ringState   = true;
+bool pinkyState  = true;
+
+void setup() {
+
+  Serial.begin(115200);
+
+  WiFi.mode(WIFI_STA);
+
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESP-NOW Init Failed");
+    return;
+  }
+
+  esp_now_peer_info_t peerInfo = {};
+
+  memcpy(peerInfo.peer_addr, receiverMac, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Peer Add Failed");
+    return;
+  }
+
+  Serial.println("KEEP HAND FULLY OPEN");
+  Serial.println("Calibrating in 3 seconds...");
+
+  delay(3000);
+
+  thumbMax  = analogRead(34);
+  indexMax  = analogRead(35);
+  middleMax = analogRead(36);
+  ringMax   = analogRead(33);
+  pinkyMax  = analogRead(32);
+
+  Serial.println("Calibration Complete");
+
+  Serial.print("Thumb Max: ");
+  Serial.println(thumbMax);
+
+  Serial.print("Index Max: ");
+  Serial.println(indexMax);
+
+  Serial.print("Middle Max: ");
+  Serial.println(middleMax);
+
+  Serial.print("Ring Max: ");
+  Serial.println(ringMax);
+
+  Serial.print("Pinky Max: ");
+  Serial.println(pinkyMax);
+}
+
+void loop() {
+
+  int thumb  = analogRead(34);
+  int index  = analogRead(35);
+  int middle = analogRead(36);
+  int ring   = analogRead(33);
+  int pinky  = analogRead(32);
+
+  // THUMB
+  if (!thumbState && thumb > thumbMax * 0.50)
+    thumbState = true;
+
+  if (thumbState && thumb < thumbMax * 0.40)
+    thumbState = false;
+
+  // INDEX
+  if (!indexState && index > indexMax * 0.50)
+    indexState = true;
+
+  if (indexState && index < indexMax * 0.40)
+    indexState = false;
+
+  // MIDDLE
+  if (!middleState && middle > middleMax * 0.65)
+    middleState = true;
+
+  if (middleState && middle < middleMax * 0.55)
+    middleState = false;
+
+  // RING
+  if (!ringState && ring > ringMax * 0.40)
+    ringState = true;
+
+  if (ringState && ring < ringMax * 0.30)
+    ringState = false;
+
+  // PINKY
+  if (!pinkyState && pinky > pinkyMax * 0.40)
+    pinkyState = true;
+
+  if (pinkyState && pinky < pinkyMax * 0.30)
+    pinkyState = false;
+
+  data.thumb  = thumbState;
+  data.index  = indexState;
+  data.middle = middleState;
+  data.ring   = ringState;
+  data.pinky  = pinkyState;
+
+  esp_now_send(
+    receiverMac,
+    (uint8_t *)&data,
+    sizeof(data)
+  );
+
+  delay(20);
+}

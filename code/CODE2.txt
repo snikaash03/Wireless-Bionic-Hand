@@ -1,0 +1,66 @@
+#include <esp_now.h>
+#include <WiFi.h>
+#include <ESP32Servo.h>
+
+Servo s1;
+Servo s2;
+Servo s3;
+Servo s4;
+Servo s5;
+
+typedef struct {
+  bool thumb;
+  bool index;
+  bool middle;
+  bool ring;
+  bool pinky;
+} HandData;
+
+HandData data;
+
+void OnDataRecv(
+  const esp_now_recv_info *info,
+  const uint8_t *incomingData,
+  int len
+) {
+
+  memcpy(&data, incomingData, sizeof(data));
+
+  if(data.thumb) s1.write(45);
+  else s1.write(180);
+
+  if(data.index) s2.write(110);
+  else s2.write(25);
+
+  if(data.middle) s3.write(180);
+  else s3.write(7);
+
+  if(data.ring) s4.write(180);
+  else s4.write(0);
+
+  if(data.pinky) s5.write(180);
+  else s5.write(0);
+}
+
+void setup() {
+
+  Serial.begin(115200);
+
+  s1.attach(13);
+  s2.attach(12);
+  s3.attach(14);
+  s4.attach(27);
+  s5.attach(26);
+
+  WiFi.mode(WIFI_STA);
+
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESP-NOW Init Failed");
+    return;
+  }
+
+  esp_now_register_recv_cb(OnDataRecv);
+}
+
+void loop() {
+}
